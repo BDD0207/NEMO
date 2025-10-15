@@ -1,0 +1,190 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>【NEMO 海洋模型】NEMO-PISCES 1D案例</title>
+  <link rel="stylesheet" href="https://stackedit.io/style.css" />
+</head>
+
+<body class="stackedit">
+  <div class="stackedit__html"><p></p><div class="toc"><h3>【NEMO 海洋模型】NEMO-PISCES 1D 案例</h3><ul><li><a href="#1_NEMOPISCES_1D__1">1. NEMO-PISCES 1D 简介</a></li><li><a href="#2__9">2. 模型先决条件</a></li><ul><li><a href="#21_Netcdf__10">2.1 Netcdf 软件包</a></li><li><a href="#22_XIOS__20">2.2 XIOS 软件包</a></li><li><a href="#23__27">2.3 新的架构文件</a></li><li><a href="#24_NEMOPISCES_1D__122">2.4 NEMO-PISCES 1D 包</a></li></ul><li><a href="#3__XIOS_130">3. 编译 XIOS</a></li><li><a href="#4__NEMO__143">4. 编译并创建 NEMO 可执行文件</a></li><li><a href="#_179">参考</a></li></ul></div><p></p>
+<h1><a id="1_NEMOPISCES_1D__1"></a>1. NEMO-PISCES 1D 简介</h1>
+<p><a href="https://zenodo.org/records/7139521">PISCES 模型</a>  是基于这样一个假设构建的，即浮游植物的生长直接受到外部营养物质供应的限制。该模型包括24个组成部分（如<a href="https://i-blog.csdnimg.cn/direct/fb04a7fa35f5452e9582d3ece5040e99.png#pic_center">图1</a>）：</p>
+<ul>
+<li>5 种不同营养物质的限制浮游植物的生长：硝酸盐、 铵盐、 磷酸盐、 硅酸盐和铁。</li>
+<li>4 个生物池： 两类浮游植物（微型浮游植物和硅藻）和两类浮游动物（微型浮游动物和中型浮游动物）。硅藻与微型浮游植物的区别在于其对硅的需求、 对铁的更高需求以及由于硅藻平均尺寸较大而具有更高的半饱和常数。</li>
+<li>3 类非生物组分：半活性溶解有机物（DOM）、小颗粒和大颗粒。这两种颗粒大小类别因其下沉速度不同而有所区别（小颗粒为每天 2 米， 大颗粒为每天 50 至 200 米）。生物组分的碳氮磷被设定为恒定 Redfield 比例。然而，颗粒中的铁、硅和方解石库是完全模拟的。因此，它们相对于有机碳的比例可以变化。 模型中未考虑球粒矿物对颗粒下沉速度的影响。</li>
+<li>3 种不同的营养物质源：大气尘埃沉降、 河流以及海洋沉积物的再矿化。<br>
+<img src="https://i-blog.csdnimg.cn/direct/fb04a7fa35f5452e9582d3ece5040e99.png#pic_center" alt="PISCES 运行原理图"></li>
+</ul>
+<h1><a id="2__9"></a>2. 模型先决条件</h1>
+<h2><a id="21_Netcdf__10"></a>2.1 Netcdf 软件包</h2>
+<pre><code class="prism language-bash"><span class="token comment"># 下载 Netcdf</span>
+<span class="token function">sudo</span> <span class="token function">apt-get</span> update
+<span class="token function">sudo</span> <span class="token function">apt-get</span> <span class="token function">install</span> libnetcdf-dev libnetcdff-dev libhdf5-dev libhdf5-mpi-dev
+
+<span class="token comment"># 查看下载路径</span>
+nf-config --fflags
+nf-config --flibs
+</code></pre>
+<h2><a id="22_XIOS__20"></a>2.2 XIOS 软件包</h2>
+<p>新建一个工作目录，在此工作目录中下载 XIOS 软件包</p>
+<pre><code class="prism language-bash"><span class="token function">mkdir</span> WORK  <span class="token comment"># 新建工作目录</span>
+<span class="token builtin class-name">cd</span> WORK     <span class="token comment"># 进入工作目录</span>
+svn co http://forge.ipsl.jussieu.fr/ioserver/svn/XIOS/trunk@2331 xios  <span class="token comment"># 下载XIOS</span>
+</code></pre>
+<h2><a id="23__27"></a>2.3 新的架构文件</h2>
+<p>一个用于环境（.env），一个用于编译器（.fcm），一个用于路径（.path）。</p>
+<pre><code class="prism language-bash"><span class="token builtin class-name">cd</span> WORK/xios/arch  <span class="token comment"># 进入arch文件夹</span>
+<span class="token comment"># 在arch中新建3个空白文件，"local"可自行更换，"arch-"不可更换</span>
+<span class="token function">touch</span> arch-local.env
+<span class="token function">touch</span> arch-local.fcm
+<span class="token function">touch</span> arch-local.path
+</code></pre>
+<p>分别进入3个文件，将下面的内容粘贴到文件内，保存并退出文件编辑</p>
+<pre><code class="prism language-bash"><span class="token function">vi</span> arch-local.env  <span class="token comment"># 使用vi编辑器</span>
+</code></pre>
+<p>点击<kbd>I</kbd>，进入编辑模式</p>
+<pre><code class="prism language-vi"># arch.local.env
+
+# MPI
+export MPI_HOME=/usr/lib/x86_64-linux-gnu/openmpi
+export PATH=$MPI_HOME/bin:$PATH
+export LD_LIBRARY_PATH=$MPI_HOME/lib:$LD_LIBRARY_PATH
+
+# NetCDF
+export NETCDF_HOME=/usr
+export LD_LIBRARY_PATH=$NETCDF_HOME/lib:$LD_LIBRARY_PATH
+
+# HDF5
+export HDF5_HOME=/usr
+export LD_LIBRARY_PATH=$HDF5_HOME/lib:$LD_LIBRARY_PATH
+</code></pre>
+<p>点击<kbd>Esc</kbd>，退出编辑模式，输入<kbd>:wq</kbd>+<kbd>Enter</kbd>，保存并退出。另外两个文件内容如下：</p>
+<pre><code class="prism language-vi"># arch.local.fcm
+%CCOMPILER      mpicc
+%FCOMPILER      mpif90
+%LINKER         mpif90
+
+# C++ 编译选项
+%BASE_CFLAGS    -I/usr/lib/x86_64-linux-gnu/netcdf/mpi/include \
+                -I/home/bdd/netcdf-c-4.9.2/include \  # 此行需根据自己系统的储存位置进行更改
+                -std=c++11 -w -D__XIOS_EXCEPTION \
+                -DBOOST_NO_AUTO_PTR -DBOOST_NO_CXX98_FUNCTION_BASE \
+                -Wno-deprecated-declarations -Wno-nonnull \
+                -Wno-unused-variable -Wno-unused-parameter
+
+%PROD_CFLAGS    -O3 -DBOOST_DISABLE_ASSERTS
+%DEV_CFLAGS     -g -O2
+%DEBUG_CFLAGS   -g -O0
+
+# Fortran 编译选项
+%BASE_FFLAGS    -D__NONE__ -ffree-line-length-none
+%PROD_FFLAGS    -O3 -ffree-line-length-none
+%DEV_FFLAGS     -g -O2 -ffree-line-length-none
+%DEBUG_FFLAGS   -g -O0 -fcheck=all -fbacktrace -ffree-line-length-none
+
+
+# 头文件路径
+%BASE_INC       -I/usr/lib/x86_64-linux-gnu/netcdf/mpi/include \
+				-I/home/bdd/netcdf-c-4.9.2/include \  # 此行需根据自己系统的储存位置进行更改
+                -I/usr/include \
+                -I/usr/include/boost \
+                -I/usr/lib/x86_64-linux-gnu/openmpi/include \
+                -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi
+
+# 链接库路径和库
+%BASE_LD        -L/usr/lib/x86_64-linux-gnu/hdf5/openmpi \
+                -L$HOME/local/lib -L/usr/lib/x86_64-linux-gnu \
+                -lnetcdf -lnetcdff -lhdf5_hl -lhdf5 -lz -lcurl -lstdc++
+
+# 预处理与构建工具
+%CPP            cpp
+%FPP            cpp -P
+%MAKE           gmake
+</code></pre>
+<pre><code class="prism language-vi"># arch.local.path
+
+# --- Include paths (NetCDF + XIOS + MPI) ---
+%BASE_INC     -I/usr/include \
+              -I/usr/include/hdf5/serial \
+              -I/usr/lib/x86_64-linux-gnu/openmpi/include \
+              -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi \
+              -I$HOME/xios-2.5/inc
+
+# --- Library paths (NetCDF + XIOS + MPI) ---
+%BASE_LD      -L/usr/lib/x86_64-linux-gnu \
+              -L/usr/lib/x86_64-linux-gnu/hdf5/serial \
+              -L/usr/lib/x86_64-linux-gnu/openmpi/lib \
+              -lnetcdff -lnetcdf -lhdf5_hl -lhdf5 \
+              -lxios -lstdc++ -lmpi
+</code></pre>
+<blockquote>
+<p><strong>注：如果下面的编译 XIOS 报错，多数是因为架构文件设置不合理，请自行检查各个路径是否正确！！！</strong></p>
+</blockquote>
+<h2><a id="24_NEMOPISCES_1D__122"></a>2.4 NEMO-PISCES 1D 包</h2>
+<p>下载<a href="https://zenodo.org/records/7139521/files/PISCES_Demonstrator.tgz?download=1">PISCES_Demonstrator</a>压缩包，手动将其粘贴到前面新建的工作目录中，利用指令解压缩</p>
+<pre><code class="prism language-bash"><span class="token builtin class-name">cd</span> WORK
+<span class="token function">ls</span>  <span class="token comment"># 此时应该能看到粘贴好的压缩包</span>
+<span class="token function">tar</span> xvzf PISCES_Demonstrator.tgz
+<span class="token function">ls</span>  <span class="token comment"># 此时应该能看到解压缩后的PISCES_Demonstrator文件夹</span>
+</code></pre>
+<h1><a id="3__XIOS_130"></a>3. 编译 XIOS</h1>
+<p>进入xios文件夹，利用前面设置好的架构文件进行编译</p>
+<pre><code class="prism language-bash"><span class="token builtin class-name">cd</span> WORK/xios
+./make_xios --arch <span class="token builtin class-name">local</span> --full --prod --job <span class="token number">8</span>  <span class="token comment"># 清除之前的缓存，重新编译</span>
+<span class="token comment"># 此处的"local"对应步骤2.3设置的文件名</span>
+</code></pre>
+<blockquote>
+<p><strong>注：如果报错，多数是因为步骤2.3架构文件设置不合理，请自行检查各个路径是否正确！！！<br>
+如果报错，多数是因为步骤2.3架构文件设置不合理，请自行检查各个路径是否正确！！！<br>
+如果报错，多数是因为步骤2.3架构文件设置不合理，请自行检查各个路径是否正确！！！</strong></p>
+</blockquote>
+<p>编译成功界面：<br>
+<img src="https://i-blog.csdnimg.cn/direct/ca4eee9b607940f1ac1d05e4b04fb0ff.png#pic_center" alt="XIOS编译成功啦"></p>
+<h1><a id="4__NEMO__143"></a>4. 编译并创建 NEMO 可执行文件</h1>
+<ul>
+<li>获取 NEMO-5.0 代码</li>
+</ul>
+<pre><code class="prism language-bash"><span class="token builtin class-name">cd</span> <span class="token punctuation">..</span>  <span class="token comment"># 此时在WORK文件夹下</span>
+<span class="token function">git</span> clone https://forge.nemo-ocean.eu/nemo/nemo.git nemo-5.0
+<span class="token builtin class-name">cd</span> nemo-5.0
+<span class="token function">git</span> switch --detach <span class="token number">5.0</span>
+</code></pre>
+<ul>
+<li>设置架构配置文件，以供编译NEMO。可使用官方的自动生成文件</li>
+</ul>
+<pre><code class="prism language-bash"><span class="token builtin class-name">cd</span> arch
+./build_arch-auto.sh
+</code></pre>
+<ul>
+<li>编译</li>
+</ul>
+<pre><code class="prism language-bash"><span class="token builtin class-name">cd</span> <span class="token punctuation">..</span>
+<span class="token function">rm</span> -rf cfgs/ORCA_1D_PISCES
+./makenemo -n ORCA_1D_PISCES -r GYRE_PISCES -m auto -j <span class="token number">4</span>
+</code></pre>
+<p>编译成功界面如下：<br>
+<img src="https://i-blog.csdnimg.cn/direct/b78e9a87c86f4171976395e2cdb20693.png#pic_center" alt="NEMO编译成功啦"></p>
+<ul>
+<li>运行</li>
+</ul>
+<pre><code class="prism language-bash"><span class="token builtin class-name">cd</span> cfgs/ORCA_1D_PISCES/EXP00
+<span class="token function">cp</span> -r ~/nemo/WORK/nemo-5.0/cfgs/ORCA_1D_PISCES/BLD/bin/nemo.exe <span class="token builtin class-name">.</span>
+./nemo.exe
+</code></pre>
+<p>成功运行界面如下：<br>
+<img src="https://i-blog.csdnimg.cn/direct/7324c08b52014c63b9c9d460cafe92b6.png#pic_center" alt="成功运行耶耶耶"><br>
+成功运行：<kbd>STOP 0</kbd><br>
+实际运行时间：<kbd>313.937 s</kbd><br>
+XIOS 性能优秀：I/O开销占比<kbd>0.00101682 %</kbd></p>
+<h1><a id="_179"></a>参考</h1>
+<p><a href="https://sites.nemo-ocean.io/user-guide/install.html">NEMO 官方用户指南</a><br>
+<a href="https://www.nemo-ocean.eu/nemo-zoo-demonstrators-and-tutorials/">NEMO Zoo</a><br>
+<a href="https://www.pisces-community.org/">PISCES 社区</a></p>
+</div>
+</body>
+
+</html>
