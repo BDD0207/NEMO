@@ -160,9 +160,23 @@ cd arch
 ```bash
 cd ..
 rm -rf cfgs/PISCES_KERFIX
-./makenemo -n PISCES_KERFIX -r ORCA2_ICE_PISCES -m auto -j 4
+ln -s src/OCE/ICB src/ICB  # 设置软链接
+./makenemo -n PISCES_KERFIX -r ORCA2_ICE_PISCES -m auto -j 0
 cp -a /home/bdd/nemo/WORK/PISCES_Demonstrator/MY_SRC/* /home/bdd/nemo/WORK/nemo-5.0/cfgs/PISCES_KERFIX/MY_SRC/
 cp -a /home/bdd/nemo/WORK/nemo-5.0/cfgs/C1D/MY_SRC/* /home/bdd/nemo/WORK/nemo-5.0/cfgs/PISCES_KERFIX/MY_SRC/
+./makenemo -n PISCES_KERFIX -r ORCA2_ICE_PISCES -m auto -j 4
+vi /home/bdd/nemo/WORK/nemo-5.0/cfgs/PISCES_KERFIX/BLD/bld.cfg
+```
+由于<kbd>ICB</kbd>模块储存路径问题，手动加入下面一行
+```vi
+bld::srcdir  = $(MAIN_DIR)/src/OCE
+bld::srcdir  += $(MAIN_DIR)/src/TOP
+bld::srcdir  += $(MAIN_DIR)/src/ICE
+bld::srcdir  += $(MAIN_DIR)/src/NST
+bld::srcdir  += $(MAIN_DIR)/src/ABL
+
+#  加入下面一行
+bld::srcdir  += $(MAIN_DIR)/src/OCE/ICB
 ```
 编译成功界面如下：
 ![NEMO编译成功啦](https://i-blog.csdnimg.cn/direct/b78e9a87c86f4171976395e2cdb20693.png#pic_center)
