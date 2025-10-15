@@ -159,16 +159,18 @@ cd arch
  - 编译
 ```bash
 cd ..
-rm -rf cfgs/ORCA_1D_PISCES
-./makenemo -n ORCA_1D_PISCES -r GYRE_PISCES -m auto -j 4
+rm -rf cfgs/PISCES_KERFIX
+./makenemo -n PISCES_KERFIX -r ORCA2_ICE_PISCES -m auto -j 4
+cp -a /home/bdd/nemo/WORK/PISCES_Demonstrator/MY_SRC/* /home/bdd/nemo/WORK/nemo-5.0/cfgs/PISCES_KERFIX/MY_SRC/
+cp -a /home/bdd/nemo/WORK/nemo-5.0/cfgs/C1D/MY_SRC/* /home/bdd/nemo/WORK/nemo-5.0/cfgs/PISCES_KERFIX/MY_SRC/
 ```
 编译成功界面如下：
 ![NEMO编译成功啦](https://i-blog.csdnimg.cn/direct/b78e9a87c86f4171976395e2cdb20693.png#pic_center)
 - 运行
 
 ```bash
-cd cfgs/ORCA_1D_PISCES/EXP00
-cp -r ~/nemo/WORK/nemo-5.0/cfgs/ORCA_1D_PISCES/BLD/bin/nemo.exe .
+cd cfgs/PISCES_KERFIX/EXP00
+cp -r ~/nemo/WORK/nemo-5.0/cfgs/PISCES_KERFIX/BLD/bin/nemo.exe .
 ./nemo.exe
 ```
 成功运行界面如下：
